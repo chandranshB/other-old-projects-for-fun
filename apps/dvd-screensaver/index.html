@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DVD Screensaver Deluxe - Corner Hit Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Montserrat', -apple-system, sans-serif;
+        }
+
+        #trail-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #dvd-logo {
+            position: absolute;
+            display: inline-block;
+            font-size: clamp(48px, 9vw, 95px);
+            font-weight: 900;
+            transition: none;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+            letter-spacing: 2px;
+            text-shadow: 0 0 25px currentColor;
+            z-index: 10;
+            cursor: pointer;
+            will-change: transform, left, top;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            position: fixed;
+            top: 15px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        .hud-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+
+        .hud-link:hover {
+            color: #fff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        }
+
+        .stats-badge {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #e2e8f0;
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .stat-highlight {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        /* Bottom Control Panel */
+        #control-dock {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            opacity: 1;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #control-dock.hidden, #top-bar.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .dock-input {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: 700;
+            width: 120px;
+        }
+
+        .dock-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+
+        .dock-label {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dock-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dock-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+        }
+
+        .dock-btn.active {
+            background: #38bdf8;
+            color: #000;
+            border-color: #38bdf8;
+        }
+
+        /* Celebration Flash */
+        #corner-celebration {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 80;
+            transition: opacity 0.1s ease;
+        }
+
+        #corner-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 28px;
+            font-weight: 900;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+
+        #corner-toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="trail-canvas"></canvas>
+    <div id="corner-celebration"></div>
+    <div id="corner-toast">🎉 CORNER HIT! 🎉</div>
+
+    <div id="top-bar">
+        <a href="../../index.html" class="hud-link">
+            <span>◀</span> Hub Portfolio
+        </a>
+        <div class="stats-badge">
+            <div>Bounces: <span id="bounce-count" class="stat-highlight">0</span></div>
+            <div>Corner Hits: <span id="corner-count" class="stat-highlight" style="color: #10b981;">0</span></div>
+        </div>
+    </div>
+
+    <div id="dvd-logo">DVD</div>
+
+    <div id="control-dock">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="dock-label">Text:</span>
+            <input type="text" id="logo-text-input" class="dock-input" value="DVD" maxlength="12">
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="dock-label">Speed:</span>
+            <button class="dock-btn speed-btn" data-speed="1.2">1x</button>
+            <button class="dock-btn speed-btn active" data-speed="2.2">2x</button>
+            <button class="dock-btn speed-btn" data-speed="4.0">Turbo</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="trail-toggle" class="dock-btn">✨ Trail: OFF</button>
+            <button id="fullscreen-toggle" class="dock-btn">⛶ Fullscreen</button>
+            <button id="hide-ui-btn" class="dock-btn" title="Press H to toggle UI">Hide UI (H)</button>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio Synthesizer for Bounce & Corner Hits
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBounceSound(isCorner = false) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            if (isCorner) {
+                // Glorious chime chord
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const cOsc = audioCtx.createOscillator();
+                    const cGain = audioCtx.createGain();
+                    cOsc.type = 'sine';
+                    cOsc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    cGain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                    cGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.5);
+                    cOsc.connect(cGain);
+                    cGain.connect(audioCtx.destination);
+                    cOsc.start(now + idx * 0.08);
+                    cOsc.stop(now + idx * 0.08 + 0.5);
+                });
+            } else {
+                // Subtle soft bounce blip
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+        }
+
+        const logo = document.getElementById('dvd-logo');
+        const bounceCountEl = document.getElementById('bounce-count');
+        const cornerCountEl = document.getElementById('corner-count');
+        const textInput = document.getElementById('logo-text-input');
+        const trailToggle = document.getElementById('trail-toggle');
+        const cornerCelebration = document.getElementById('corner-celebration');
+        const cornerToast = document.getElementById('corner-toast');
+        const controlDock = document.getElementById('control-dock');
+        const topBar = document.getElementById('top-bar');
+
+        const colors = [
+            '#FF3B30', '#FF9500', '#FFCC00', '#34C759',
+            '#00C7BE', '#30B0C7', '#32ADE6', '#007AFF',
+            '#5856D6', '#AF52DE', '#FF2D55', '#A2845E'
+        ];
+
+        // URL Query parameter check
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryText = urlParams.get('text');
+        if (queryText) {
+            logo.textContent = queryText;
+            textInput.value = queryText;
+        }
+
+        let speedMultiplier = 2.2;
+        let bounces = 0;
+        let corners = 0;
+        let colorIndex = 0;
+        let trailActive = false;
+
+        let x = Math.random() * (window.innerWidth - 200);
+        let y = Math.random() * (window.innerHeight - 100);
+        let dx = speedMultiplier;
+        let dy = speedMultiplier;
+
+        logo.style.color = colors[colorIndex];
+
+        // Trail Canvas
+        const trailCanvas = document.getElementById('trail-canvas');
+        const tCtx = trailCanvas.getContext('2d');
+        function resizeCanvas() {
+            trailCanvas.width = window.innerWidth;
+            trailCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerCornerCelebration() {
+            playBounceSound(true);
+            cornerCelebration.style.opacity = '1';
+            cornerToast.classList.add('show');
+            setTimeout(() => {
+                cornerCelebration.style.opacity = '0';
+                cornerToast.classList.remove('show');
+            }, 1200);
+        }
+
+        function animate() {
+            if (trailActive) {
+                tCtx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+                tCtx.fillRect(0, 0, trailCanvas.width, trailCanvas.height);
+                tCtx.font = window.getComputedStyle(logo).font;
+                tCtx.fillStyle = logo.style.color;
+                tCtx.globalAlpha = 0.2;
+                tCtx.fillText(logo.textContent, x, y + logo.offsetHeight * 0.85);
+                tCtx.globalAlpha = 1.0;
+            } else {
+                tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            }
+
+            const logoWidth = logo.offsetWidth;
+            const logoHeight = logo.offsetHeight;
+            const maxX = window.innerWidth - logoWidth;
+            const maxY = window.innerHeight - logoHeight;
+
+            x += dx;
+            y += dy;
+
+            let hitX = false;
+            let hitY = false;
+
+            if (x <= 0) {
+                dx = Math.abs(dx);
+                x = 0;
+                hitX = true;
+            } else if (x >= maxX) {
+                dx = -Math.abs(dx);
+                x = maxX;
+                hitX = true;
+            }
+
+            if (y <= 0) {
+                dy = Math.abs(dy);
+                y = 0;
+                hitY = true;
+            } else if (y >= maxY) {
+                dy = -Math.abs(dy);
+                y = maxY;
+                hitY = true;
+            }
+
+            const isCorner = hitX && hitY;
+
+            if (isCorner) {
+                corners++;
+                cornerCountEl.textContent = corners;
+                triggerCornerCelebration();
+            } else if (hitX || hitY) {
+                bounces++;
+                bounceCountEl.textContent = bounces;
+                playBounceSound(false);
+                colorIndex = (colorIndex + 1) % colors.length;
+                logo.style.color = colors[colorIndex];
+            }
+
+            logo.style.left = `${x}px`;
+            logo.style.top = `${y}px`;
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Logo Text Change
+        textInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim() || 'DVD';
+            logo.textContent = val;
+        });
+
+        // Speed controls
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                speedMultiplier = parseFloat(btn.dataset.speed);
+                dx = (dx > 0 ? 1 : -1) * speedMultiplier;
+                dy = (dy > 0 ? 1 : -1) * speedMultiplier;
+            });
+        });
+
+        // Trail Toggle
+        trailToggle.addEventListener('click', () => {
+            trailActive = !trailActive;
+            trailToggle.textContent = trailActive ? '✨ Trail: ON' : '✨ Trail: OFF';
+            trailToggle.classList.toggle('active', trailActive);
+        });
+
+        // Fullscreen Toggle
+        document.getElementById('fullscreen-toggle').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // UI Toggle
+        let uiHidden = false;
+        function toggleUI() {
+            uiHidden = !uiHidden;
+            controlDock.classList.toggle('hidden', uiHidden);
+            topBar.classList.toggle('hidden', uiHidden);
+        }
+
+        document.getElementById('hide-ui-btn').addEventListener('click', toggleUI);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'h' || e.key === 'H') {
+                if (document.activeElement !== textInput) {
+                    toggleUI();
+                }
+            }
+        });
+
+        logo.addEventListener('click', () => {
+            colorIndex = (colorIndex + 1) % colors.length;
+            logo.style.color = colors[colorIndex];
+        });
+    </script>
+</body>
+</html>

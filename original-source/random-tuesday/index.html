@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Photo Puzzle</title>
+    <style>
+        :root {
+            /* Responsive board size: takes up most of the screen on mobile, caps at 400px on desktop */
+            --board-size: min(92vw, 420px);
+            --grid-size: 4; /* Default, overridden by JS */
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px 10px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #1a1a1a;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Camera Section */
+        #camera-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .video-container {
+            width: var(--board-size);
+            height: var(--board-size);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Controls Area */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        select {
+            padding: 10px 16px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            min-height: 44px; /* Accessible touch target size */
+            cursor: pointer;
+        }
+
+        /* Puzzle Section */
+        #puzzle-section {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            width: 100%;
+        }
+
+        #puzzle-board {
+            width: var(--board-size);
+            height: var(--board-size);
+            background-color: #d1d5db;
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            overflow: hidden;
+            /* Give it an explicit aspect ratio constraint */
+            aspect-ratio: 1 / 1; 
+        }
+
+        .tile {
+            /* Size adapts dynamically based on grid size */
+            width: calc(100% / var(--grid-size));
+            height: calc(100% / var(--grid-size));
+            position: absolute;
+            
+            /* The image size needs to be scaled up by the grid size multiplier */
+            background-size: calc(100% * var(--grid-size)) calc(100% * var(--grid-size));
+            background-repeat: no-repeat;
+            
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            
+            /* Accessibility / Visuals */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+
+        .tile:focus {
+            outline: 3px solid #0066cc;
+            outline-offset: -3px;
+            z-index: 10; /* Bring focused element to front */
+        }
+
+        .tile.empty {
+            display: none;
+        }
+
+        /* Buttons */
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            min-height: 44px; /* Accessible touch target size */
+            min-width: 160px;
+        }
+
+        button:hover { background-color: #0052a3; }
+        button:active { transform: scale(0.97); }
+        button:focus-visible {
+            outline: 3px solid #0052a3;
+            outline-offset: 2px;
+        }
+
+        /* Hidden canvas */
+        #canvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Photo Puzzle</h1>
+
+    <!-- Camera UI -->
+    <div id="camera-section">
+        <div class="video-container">
+            <video id="video" autoplay playsinline aria-label="Camera preview viewfinder"></video>
+        </div>
+        
+        <div class="controls">
+            <label for="grid-size">Difficulty:</label>
+            <select id="grid-size" aria-label="Select puzzle grid size">
+                <option value="3">3 x 3 (Easy)</option>
+                <option value="4" selected>4 x 4 (Normal)</option>
+            </select>
+        </div>
+
+        <button id="shutter-btn" aria-label="Snap photo and generate puzzle">📸 Snap Photo</button>
+    </div>
+
+    <!-- Puzzle UI -->
+    <div id="puzzle-section" aria-live="polite">
+        <div id="puzzle-board" role="application" aria-label="Sliding photo puzzle board"></div>
+        <button id="restart-btn">Take Another Photo</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const cameraSection = document.getElementById('camera-section');
+        const puzzleSection = document.getElementById('puzzle-section');
+        const puzzleBoard = document.getElementById('puzzle-board');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const gridSizeSelect = document.getElementById('grid-size');
+
+        let currentStream = null;
+        let gridSize = 4;
+        let tiles = [];
+        let emptyPos = { x: 0, y: 0 };
+        let isShuffling = false;
+
+        // 1. Manage Camera Lifecycle
+        async function startCamera() {
+            stopCamera(); // Ensure previous stream is cleanly stopped if it exists
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user', aspectRatio: 1 } 
+                });
+                video.srcObject = currentStream;
+            } catch (err) {
+                alert("Camera access denied or unavailable. Please allow camera permissions to play.");
+                console.error(err);
+            }
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                video.srcObject = null;
+            }
+        }
+
+        // 2. Capture and Crop Photo
+        shutterBtn.addEventListener('click', () => {
+            if (!video.videoWidth) return; // Prevent capture if video hasn't loaded
+
+            // Update CSS variable based on selection
+            gridSize = parseInt(gridSizeSelect.value);
+            document.documentElement.style.setProperty('--grid-size', gridSize);
+
+            // Set canvas size to the exact square dimension of the video feed
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size;
+            canvas.height = size;
+
+            const startX = (video.videoWidth - size) / 2;
+            const startY = (video.videoHeight - size) / 2;
+
+            // Draw cropped video frame to canvas
+            ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+            const imageUrl = canvas.toDataURL('image/jpeg', 0.9); // JPEG is slightly faster than PNG here
+            
+            // Turn off camera hardware
+            stopCamera();
+
+            // Switch UI
+            cameraSection.style.display = 'none';
+            puzzleSection.style.display = 'flex';
+            
+            initPuzzle(imageUrl);
+        });
+
+        // 3. Initialize the Puzzle (Responsive Method)
+        function initPuzzle(imageUrl) {
+            puzzleBoard.innerHTML = '';
+            tiles = [];
+            const totalTiles = gridSize * gridSize;
+            emptyPos = { x: gridSize - 1, y: gridSize - 1 }; // Set bottom right as empty
+
+            for (let i = 0; i < totalTiles; i++) {
+                const x = i % gridSize;
+                const y = Math.floor(i / gridSize);
+                
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                
+                if (i === totalTiles - 1) {
+                    tile.classList.add('empty');
+                } else {
+                    tile.style.backgroundImage = `url(${imageUrl})`;
+                    
+                    // Responsive Background Positioning using percentages
+                    const bgPosX = (x / (gridSize - 1)) * 100;
+                    const bgPosY = (y / (gridSize - 1)) * 100;
+                    tile.style.backgroundPosition = `${bgPosX}% ${bgPosY}%`;
+
+                    // Accessibility
+                    tile.setAttribute('role', 'button');
+                    tile.setAttribute('tabindex', '0');
+                    tile.setAttribute('aria-label', `Tile piece at row ${y + 1}, column ${x + 1}`);
+                }
+
+                // Store current coordinates
+                tile.dataset.x = x;
+                tile.dataset.y = y;
+                
+                updateTilePosition(tile, x, y);
+                
+                // Interaction Events
+                tile.addEventListener('click', () => moveTile(tile));
+                tile.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        moveTile(tile);
+                    }
+                });
+
+                puzzleBoard.appendChild(tile);
+                tiles.push(tile);
+            }
+
+            // Shuffle automatically
+            shufflePuzzle();
+        }
+
+        // 4. Handle Tile Movement
+        function moveTile(tile) {
+            const tx = parseInt(tile.dataset.x);
+            const ty = parseInt(tile.dataset.y);
+
+            const isAdjacent = (Math.abs(tx - emptyPos.x) === 1 && ty === emptyPos.y) || 
+                               (Math.abs(ty - emptyPos.y) === 1 && tx === emptyPos.x);
+
+            if (isAdjacent) {
+                tile.dataset.x = emptyPos.x;
+                tile.dataset.y = emptyPos.y;
+                updateTilePosition(tile, emptyPos.x, emptyPos.y);
+
+                emptyPos.x = tx;
+                emptyPos.y = ty;
+
+                if (!isShuffling) checkWin();
+            }
+        }
+
+        // Apply physical positioning via responsive percentages
+        function updateTilePosition(tile, x, y) {
+            // translate(100%, 0) moves the tile exactly 1 tile-width to the right. 
+            // This makes the layout immune to browser resizing.
+            tile.style.transform = `translate(${x * 100}%, ${y * 100}%)`;
+        }
+
+        // 5. Shuffle by simulating random valid moves
+        function shufflePuzzle() {
+            isShuffling = true;
+            // 3x3 needs fewer shuffles than 4x4
+            const moves = gridSize === 3 ? 100 : 150; 
+            
+            for (let i = 0; i < moves; i++) {
+                const movableTiles = tiles.filter(t => {
+                    if (t.classList.contains('empty')) return false;
+                    const tx = parseInt(t.dataset.x);
+                    const ty = parseInt(t.dataset.y);
+                    return (Math.abs(tx - emptyPos.x) === 1 && ty === emptyPos.y) || 
+                           (Math.abs(ty - emptyPos.y) === 1 && tx === emptyPos.x);
+                });
+
+                const randomTile = movableTiles[Math.floor(Math.random() * movableTiles.length)];
+                moveTile(randomTile);
+            }
+            isShuffling = false;
+        }
+
+        // 6. Check for Win Condition
+        function checkWin() {
+            let win = true;
+            const totalTiles = gridSize * gridSize;
+
+            for (let i = 0; i < totalTiles - 1; i++) { 
+                const tile = tiles[i];
+                const expectedX = i % gridSize;
+                const expectedY = Math.floor(i / gridSize);
+                
+                if (parseInt(tile.dataset.x) !== expectedX || parseInt(tile.dataset.y) !== expectedY) {
+                    win = false;
+                    break;
+                }
+            }
+            
+            if (win) {
+                setTimeout(() => alert("🎉 Puzzle Solved! Great job!"), 300);
+            }
+        }
+
+        // 7. Restart
+        restartBtn.addEventListener('click', () => {
+            puzzleSection.style.display = 'none';
+            cameraSection.style.display = 'flex';
+            startCamera(); // Turn camera hardware back on
+        });
+
+        // Initialize on load
+        startCamera();
+    </script>
+</body>
+</html>

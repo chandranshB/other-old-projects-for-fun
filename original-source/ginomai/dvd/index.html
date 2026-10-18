@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVD Screensaver</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        #dvd-logo {
+            position: absolute;
+            display: inline-block;
+            font-size: 80px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            transition: none;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="dvd-logo">DVD</div>
+
+    <script>
+        const logo = document.getElementById('dvd-logo');
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#FF1493'];
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const customText = urlParams.get('text');
+        if (customText) {
+            logo.textContent = customText;
+        }
+        
+        logo.style.left = '0px';
+        logo.style.top = '0px';
+        
+        let x = Math.random() * (window.innerWidth - logo.offsetWidth);
+        let y = Math.random() * (window.innerHeight - logo.offsetHeight);
+        let dx = 1.2;
+        let dy = 1.2;
+        let colorIndex = 0;
+        
+        logo.style.color = colors[colorIndex];
+        
+        function animate() {
+            const logoWidth = logo.offsetWidth;
+            const logoHeight = logo.offsetHeight;
+            const maxX = window.innerWidth - logoWidth;
+            const maxY = window.innerHeight - logoHeight;
+            
+            x += dx;
+            y += dy;
+            
+            let hitEdge = false;
+            let hitCorner = false;
+            
+            if (x <= 0) {
+                dx = Math.abs(dx);
+                x = 0;
+                hitEdge = true;
+            } else if (x >= maxX) {
+                dx = -Math.abs(dx);
+                x = maxX;
+                hitEdge = true;
+            }
+            
+            if (y <= 0) {
+                dy = Math.abs(dy);
+                y = 0;
+                hitEdge = true;
+            } else if (y >= maxY) {
+                dy = -Math.abs(dy);
+                y = maxY;
+                hitEdge = true;
+            }
+            
+            hitCorner = (x === 0 || x === maxX) && (y === 0 || y === maxY);
+            
+            if (hitCorner) {
+                if (x === 0) x += 1;
+                else if (x === maxX) x -= 1;
+                if (y === 0) y += 1;
+                else if (y === maxY) y -= 1;
+            }
+            
+            if (hitEdge && !hitCorner) {
+                colorIndex = (colorIndex + 1) % colors.length;
+                logo.style.color = colors[colorIndex];
+            }
+            
+            logo.style.left = x + 'px';
+            logo.style.top = y + 'px';
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            const maxX = window.innerWidth - logo.offsetWidth;
+            const maxY = window.innerHeight - logo.offsetHeight;
+            if (x > maxX) x = maxX;
+            if (y > maxY) y = maxY;
+        });
+    </script>
+</body>
+</html>

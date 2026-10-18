@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Notepad Web & Python Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-window: #1e2433;
+            --bg-editor: #131722;
+            --border-window: #2e384d;
+            --text-editor: #e2e8f0;
+            --accent: #38bdf8;
+            --menu-hover: #2a3347;
+            --status-bg: #0f131c;
+        }
+
+        body.light-theme {
+            --bg-window: #f1f5f9;
+            --bg-editor: #ffffff;
+            --border-window: #cbd5e1;
+            --text-editor: #0f172a;
+            --accent: #0284c7;
+            --menu-hover: #e2e8f0;
+            --status-bg: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px 16px 40px;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0b0f19 75%);
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-bar {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 8px 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-back:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(-2px);
+        }
+
+        .title-block {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: clamp(24px, 4.5vw, 36px);
+            font-weight: 800;
+            margin: 0 0 6px 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Mode Selector */
+        .mode-tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            margin-bottom: 20px;
+            gap: 6px;
+        }
+
+        .mode-tab {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 8px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-tab.active {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+        }
+
+        /* Window Container */
+        .window-frame {
+            width: 100%;
+            max-width: 900px;
+            height: 600px;
+            background: var(--bg-window);
+            border: 1px solid var(--border-window);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+
+        /* Window Titlebar */
+        .window-titlebar {
+            background: var(--status-bg);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-window);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .window-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        /* Menu Bar */
+        .window-menubar {
+            background: var(--bg-window);
+            display: flex;
+            padding: 4px 10px;
+            border-bottom: 1px solid var(--border-window);
+            position: relative;
+        }
+
+        .menu-dropdown {
+            position: relative;
+        }
+
+        .menu-trigger {
+            background: transparent;
+            border: none;
+            color: var(--text-editor);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .menu-trigger:hover, .menu-dropdown.open .menu-trigger {
+            background: var(--menu-hover);
+            color: var(--accent);
+        }
+
+        .menu-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--bg-window);
+            border: 1px solid var(--border-window);
+            border-radius: 8px;
+            min-width: 170px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 100;
+            padding: 4px 0;
+        }
+
+        .menu-dropdown.open .menu-content {
+            display: block;
+        }
+
+        .menu-item {
+            padding: 8px 14px;
+            font-size: 13px;
+            color: var(--text-editor);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s;
+        }
+
+        .menu-item:hover {
+            background: var(--menu-hover);
+            color: var(--accent);
+        }
+
+        .menu-shortcut {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-left: 10px;
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: var(--border-window);
+            margin: 4px 0;
+        }
+
+        /* Editor Area */
+        .editor-wrap {
+            flex: 1;
+            display: flex;
+            background: var(--bg-editor);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #editor-textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-editor);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 16px 20px;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        /* Status Bar */
+        .window-statusbar {
+            background: var(--status-bg);
+            padding: 6px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-window);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Python View Container */
+        #python-view {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            background: #0f131c;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .action-pill {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-pill:hover {
+            background: #0369a1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="../../index.html" class="nav-back">
+            <span>◀</span> Hub Portfolio
+        </a>
+        <div style="font-size: 13px; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">
+            OTHER-OLD-PROJECTS-FOR-FUN #03
+        </div>
+    </div>
+
+    <div class="title-block">
+        <h1>Desktop Retro Notepad</h1>
+        <p style="color: #94a3b8; margin: 0; font-size: 14px;">Interactive text editor with real menus, auto-saving, export, and original Python source!</p>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-web">
+            <span>📝</span> Web Notepad
+        </button>
+        <button class="mode-tab" id="tab-py">
+            <span>🐍</span> Python Source (Tkinter)
+        </button>
+    </div>
+
+    <!-- 1. Web Notepad Window -->
+    <div class="window-frame" id="web-window">
+        <!-- Titlebar -->
+        <div class="window-titlebar">
+            <div class="window-dots">
+                <div class="window-dot dot-red"></div>
+                <div class="window-dot dot-yellow"></div>
+                <div class="window-dot dot-green"></div>
+            </div>
+            <div id="file-title-display">untitled.txt - Notepad</div>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <!-- Menu Bar -->
+        <div class="window-menubar">
+            <!-- File Menu -->
+            <div class="menu-dropdown" id="dropdown-file">
+                <button class="menu-trigger">File</button>
+                <div class="menu-content">
+                    <div class="menu-item" id="menu-new">
+                        <span>New</span> <span class="menu-shortcut">Ctrl+N</span>
+                    </div>
+                    <div class="menu-item" id="menu-open">
+                        <span>Open...</span> <span class="menu-shortcut">Ctrl+O</span>
+                    </div>
+                    <div class="menu-item" id="menu-save">
+                        <span>Save Text</span> <span class="menu-shortcut">Ctrl+S</span>
+                    </div>
+                    <div class="menu-item" id="menu-save-md">
+                        <span>Save as .md</span>
+                    </div>
+                    <div class="menu-divider"></div>
+                    <div class="menu-item" id="menu-print">
+                        <span>Print</span> <span class="menu-shortcut">Ctrl+P</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Menu -->
+            <div class="menu-dropdown" id="dropdown-edit">
+                <button class="menu-trigger">Edit</button>
+                <div class="menu-content">
+                    <div class="menu-item" id="menu-undo">
+                        <span>Undo</span> <span class="menu-shortcut">Ctrl+Z</span>
+                    </div>
+                    <div class="menu-item" id="menu-copy">
+                        <span>Copy All</span> <span class="menu-shortcut">Ctrl+C</span>
+                    </div>
+                    <div class="menu-item" id="menu-clear">
+                        <span>Clear All</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Menu -->
+            <div class="menu-dropdown" id="dropdown-view">
+                <button class="menu-trigger">View</button>
+                <div class="menu-content">
+                    <div class="menu-item" id="menu-theme-toggle">
+                        <span id="theme-status">Switch to Light Theme</span>
+                    </div>
+                    <div class="menu-item" id="menu-font-toggle">
+                        <span id="font-status">Font: Monospace</span>
+                    </div>
+                    <div class="menu-divider"></div>
+                    <div class="menu-item" id="menu-zoom-in">Zoom In</div>
+                    <div class="menu-item" id="menu-zoom-out">Zoom Out</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden File Input for Open -->
+        <input type="file" id="local-file-input" accept=".txt,.md,.js,.py,.html,.css,.json" style="display: none;">
+
+        <!-- Editor Content -->
+        <div class="editor-wrap">
+            <textarea id="editor-textarea" placeholder="Type your notes here... (Auto-saves continuously)"></textarea>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="window-statusbar">
+            <div class="status-badge">
+                <span id="stat-words">0 words</span>
+                <span>&bull;</span>
+                <span id="stat-chars">0 characters</span>
+                <span>&bull;</span>
+                <span id="stat-lines">1 line</span>
+            </div>
+            <div class="status-badge">
+                <span id="stat-autosave" style="color: #10b981;">● Auto-saved</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Python Source View -->
+    <div id="python-view">
+        <div class="code-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="background: #0284c7; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px;">PYTHON 3</span>
+                <span style="font-weight: 700; color: #fff;">Notepad.py</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="action-pill" id="copy-py-btn">📋 Copy Code</button>
+                <a href="../../original-source/other-old-projects-for-fun/Notepad.py" download="Notepad.py" class="action-pill">⬇ Download .py</a>
+            </div>
+        </div>
+        <pre><code id="py-code-block">import tkinter as tk
+from tkinter import filedialog
+
+class Notepad(tk.Tk):
+    def __init__(self, *args, **kwargs):
+        tk.Tk.__init__(self, *args, **kwargs)
+
+        # Set the title for the notepad
+        self.title("Notepad")
+
+        # Create a text widget
+        self.text = tk.Text(self, wrap="word")
+        self.text.pack(side="top", fill="both", expand=True)
+
+        # Create a menu bar
+        self.menu = tk.Menu(self)
+        self.config(menu=self.menu)
+
+        # Create a file menu
+        file_menu = tk.Menu(self.menu)
+        self.menu.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="New", command=self.new_file)
+        file_menu.add_command(label="Open", command=self.open_file)
+        file_menu.add_command(label="Save", command=self.save_file)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+
+        # Create an edit menu
+        edit_menu = tk.Menu(self.menu)
+        self.menu.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(label="Cut", command=self.cut)
+        edit_menu.add_command(label="Copy", command=self.copy)
+        edit_menu.add_command(label="Paste", command=self.paste)
+
+    def new_file(self):
+        self.text.delete("1.0", "end")
+        self.title("Notepad")
+
+    def open_file(self):
+        file = filedialog.askopenfile(parent=self, mode="rb", title="Open a file")
+        if file:
+            contents = file.read()
+            self.text.delete("1.0", "end")
+            self.text.insert("1.0", contents)
+            file.close()
+            self.title(file.name + " - Notepad")
+
+    def save_file(self):
+        file = filedialog.asksaveasfile(mode="w", defaultextension=".txt", filetypes=[("Text Documents", "*.txt"), ("All Files", "*.*")])
+        if file:
+            contents = self.text.get("1.0", "end")
+            file.write(contents)
+            file.close()
+            self.title(file.name + " - Notepad")
+
+    def cut(self):
+        self.text.event_generate("&lt;&lt;Cut&gt;&gt;")
+
+    def copy(self):
+        self.text.event_generate("&lt;&lt;Copy&gt;&gt;")
+
+    def paste(self):
+        self.text.event_generate("&lt;&lt;Paste&gt;&gt;")
+
+if __name__ == "__main__":
+    notepad = Notepad()
+    notepad.mainloop()</code></pre>
+    </div>
+
+    <script>
+        // Tab Switcher
+        const tabWeb = document.getElementById('tab-web');
+        const tabPy = document.getElementById('tab-py');
+        const webWindow = document.getElementById('web-window');
+        const pyView = document.getElementById('python-view');
+
+        tabWeb.addEventListener('click', () => {
+            tabWeb.classList.add('active');
+            tabPy.classList.remove('active');
+            webWindow.style.display = 'flex';
+            pyView.style.display = 'none';
+        });
+
+        tabPy.addEventListener('click', () => {
+            tabPy.classList.add('active');
+            tabWeb.classList.remove('active');
+            webWindow.style.display = 'none';
+            pyView.style.display = 'block';
+        });
+
+        // Copy Python code
+        document.getElementById('copy-py-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(document.getElementById('py-code-block').innerText).then(() => {
+                alert('Python Notepad script copied to clipboard!');
+            });
+        });
+
+        // Editor & Dropdown State
+        const textarea = document.getElementById('editor-textarea');
+        const fileTitle = document.getElementById('file-title-display');
+        const statWords = document.getElementById('stat-words');
+        const statChars = document.getElementById('stat-chars');
+        const statLines = document.getElementById('stat-lines');
+        const fileInput = document.getElementById('local-file-input');
+
+        let currentFileName = 'untitled.txt';
+        let currentFontSize = 14;
+        let isMonospace = true;
+        let isLight = false;
+
+        // Auto-load saved text
+        const savedText = localStorage.getItem('notepad_web_content');
+        if (savedText) {
+            textarea.value = savedText;
+            updateStats();
+        }
+
+        // Stats calculation & auto-save
+        function updateStats() {
+            const val = textarea.value;
+            localStorage.setItem('notepad_web_content', val);
+
+            const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+            const chars = val.length;
+            const lines = val.split('\n').length;
+
+            statWords.textContent = `${words} word${words === 1 ? '' : 's'}`;
+            statChars.textContent = `${chars} character${chars === 1 ? '' : 's'}`;
+            statLines.textContent = `${lines} line${lines === 1 ? '' : 's'}`;
+        }
+
+        textarea.addEventListener('input', updateStats);
+
+        // Dropdown Menu Toggles
+        document.querySelectorAll('.menu-dropdown').forEach(dd => {
+            const trigger = dd.querySelector('.menu-trigger');
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.menu-dropdown').forEach(other => {
+                    if (other !== dd) other.classList.remove('open');
+                });
+                dd.classList.toggle('open');
+            });
+        });
+
+        window.addEventListener('click', () => {
+            document.querySelectorAll('.menu-dropdown').forEach(dd => dd.classList.remove('open'));
+        });
+
+        // File Menu Actions
+        document.getElementById('menu-new').addEventListener('click', () => {
+            if (confirm('Create new document? (Unsaved local changes will be cleared)')) {
+                textarea.value = '';
+                currentFileName = 'untitled.txt';
+                fileTitle.textContent = `${currentFileName} - Notepad`;
+                updateStats();
+            }
+        });
+
+        document.getElementById('menu-open').addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                currentFileName = file.name;
+                fileTitle.textContent = `${currentFileName} - Notepad`;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    textarea.value = ev.target.result;
+                    updateStats();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function downloadFile(ext = '.txt') {
+            let name = currentFileName;
+            if (!name.endsWith(ext)) name = name.replace(/\.[^/.]+$/, "") + ext;
+            const blob = new Blob([textarea.value], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('menu-save').addEventListener('click', () => downloadFile('.txt'));
+        document.getElementById('menu-save-md').addEventListener('click', () => downloadFile('.md'));
+        document.getElementById('menu-print').addEventListener('click', () => window.print());
+
+        // Edit Menu Actions
+        document.getElementById('menu-undo').addEventListener('click', () => document.execCommand('undo'));
+        document.getElementById('menu-copy').addEventListener('click', () => {
+            navigator.clipboard.writeText(textarea.value).then(() => alert('Copied all text!'));
+        });
+        document.getElementById('menu-clear').addEventListener('click', () => {
+            if (confirm('Clear editor content?')) {
+                textarea.value = '';
+                updateStats();
+            }
+        });
+
+        // View Menu Actions
+        document.getElementById('menu-theme-toggle').addEventListener('click', () => {
+            isLight = !isLight;
+            document.body.classList.toggle('light-theme', isLight);
+            document.getElementById('theme-status').textContent = isLight ? 'Switch to Dark Theme' : 'Switch to Light Theme';
+        });
+
+        document.getElementById('menu-font-toggle').addEventListener('click', () => {
+            isMonospace = !isMonospace;
+            textarea.style.fontFamily = isMonospace ? "'JetBrains Mono', monospace" : "'Plus Jakarta Sans', sans-serif";
+            document.getElementById('font-status').textContent = isMonospace ? 'Font: Monospace' : 'Font: Sans-Serif';
+        });
+
+        document.getElementById('menu-zoom-in').addEventListener('click', () => {
+            currentFontSize = Math.min(currentFontSize + 2, 28);
+            textarea.style.fontSize = `${currentFontSize}px`;
+        });
+
+        document.getElementById('menu-zoom-out').addEventListener('click', () => {
+            currentFontSize = Math.max(currentFontSize - 2, 11);
+            textarea.style.fontSize = `${currentFontSize}px`;
+        });
+
+        // Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                downloadFile('.txt');
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+    </script>
+</body>
+</html>

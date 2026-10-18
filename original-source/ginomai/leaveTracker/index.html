@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- Icon Components (Now accept 'sw' for stroke-width) ---
+    const Calendar = ({ c = '', s = 24, sw = 2 }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-calendar ${c}`}> <rect width="18" height="18" x="3" y="4" rx="2" ry="2" /> <line x1="16" x2="16" y1="2" y2="6" /> <line x1="8" x2="8" y1="2" y2="6" /> <line x1="3" x2="21" y1="10" y2="10" /> </svg> );
+    const Target = ({ c = '', s = 24, sw = 2 }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-target ${c}`}> <circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="6" /> <circle cx="12" cy="12" r="2" /> </svg> );
+    const Sparkles = ({ c = '', s = 24, sw = 2 }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-sparkles ${c}`}> <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /> <path d="M5 3v4" /> <path d="M19 17v4" /> <path d="M3 5h4" /> <path d="M17 19h4" /> </svg> );
+    const ClipboardList = ({ c = '', s = 24, sw = 2 }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-clipboard-list ${c}`}> <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /> </svg> );
+    const Settings = ({ c = '', s = 24, sw = 2 }) => ( <svg xmlns="http://www.w3.org/2000/svg" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-sliders-horizontal ${c}`}> <line x1="21" x2="14" y1="4" y2="4" /> <line x1="10" x2="3" y1="4" y2="4" /> <line x1="21" x2="12" y1="12" y2="12" /> <line x1="8" x2="3" y1="12" y2="12" /> <line x1="21" x2="16" y1="20" y2="20" /> <line x1="12" x2="3" y1="20" y2="20" /> <line x1="14" x2="14" y1="2" y2="6" /> <line x1="8" x2="8" y1="10" y2="14" /> <line x1="16" x2="16" y1="18" y2="22" /> </svg> );
+
+    // --- THEME ENGINE ---
+    const getThemeClasses = (design, isDarkMode) => {
+      const themes = {
+        cupertino: {
+          light: {
+            font: 'font-["-apple-system",_"BlinkMacSystemFont",_"Segoe_UI",_"Roboto",_"Helvetica_Neue",_"Arial",_"Noto_Sans",_sans-serif]',
+            pageBg: "bg-[#f2f2f7]",
+            cardBg: "bg-white",
+            cardRounding: "rounded-xl",
+            cardShadow: "shadow-sm",
+            headerFont: "text-4xl font-bold",
+            settingsButton: "p-2 rounded-lg hover:bg-gray-200/70",
+            iconStrokeWidth: 2,
+            primaryText: "text-gray-900",
+            secondaryText: "text-gray-600",
+            secondarySubtle: "text-gray-500",
+            tertiaryBg: "bg-gray-200/70",
+            dividerColor: "bg-gray-200",
+            inputColor: "text-gray-500",
+            actionColor: "text-blue-600",
+            activeSegmentBg: "bg-white",
+            iconBgRed: "bg-red-100",
+            iconColorRed: "text-red-600",
+            iconBgGreen: "bg-green-100",
+            iconColorGreen: "text-green-600",
+            modalBg: "bg-white/70 backdrop-blur-xl",
+            modalRounding: "rounded-t-xl",
+            modalShadow: "shadow-lg",
+            modalOpenAnimation: "animate-slide-up-cupertino",
+            modalCloseAnimation: "animate-slide-down-cupertino",
+            backdropOpenAnimation: "animate-fade-in-backdrop-fast",
+            backdropCloseAnimation: "animate-fade-out-backdrop-fast"
+          },
+          dark: {
+            font: 'font-["-apple-system",_"BlinkMacSystemFont",_"Segoe_UI",_"Roboto",_"Helvetica_Neue",_"Arial",_"Noto_Sans",_sans-serif]',
+            pageBg: "bg-black",
+            cardBg: "bg-[#1c1c1e]",
+            cardRounding: "rounded-xl",
+            cardShadow: "shadow-sm shadow-black/10",
+            headerFont: "text-4xl font-bold",
+            settingsButton: "p-2 rounded-lg hover:bg-gray-800/70",
+            iconStrokeWidth: 2,
+            primaryText: "text-gray-100",
+            secondaryText: "text-gray-500", // Dimmed for higher contrast
+            secondarySubtle: "text-gray-500",
+            tertiaryBg: "bg-gray-800/70",
+            dividerColor: "bg-gray-700",
+            inputColor: "text-gray-400",
+            actionColor: "text-blue-400",
+            activeSegmentBg: "bg-black", // Pitch black active pill
+            iconBgRed: "bg-red-900/50",
+            iconColorRed: "text-red-400",
+            iconBgGreen: "bg-green-900/50",
+            iconColorGreen: "text-green-400",
+            modalBg: "bg-[#1c1c1e]/80 backdrop-blur-xl",
+            modalRounding: "rounded-t-xl",
+            modalShadow: "shadow-lg shadow-black/20",
+            modalOpenAnimation: "animate-slide-up-cupertino",
+            modalCloseAnimation: "animate-slide-down-cupertino",
+            backdropOpenAnimation: "animate-fade-in-backdrop-fast",
+            backdropCloseAnimation: "animate-fade-out-backdrop-fast"
+          }
+        },
+        material: {
+          light: {
+            font: 'font-["Roboto",_"Noto_Sans",_sans-serif]',
+            pageBg: "bg-[#f8faff]",
+            cardBg: "bg-white",
+            cardRounding: "rounded-[28px]", // Expressive shape
+            cardShadow: "shadow-lg shadow-gray-300/50",
+            headerFont: "text-4xl font-medium",
+            settingsButton: "p-2 rounded-full hover:bg-blue-100",
+            iconStrokeWidth: 2.5, // Thicker icons
+            primaryText: "text-gray-800",
+            secondaryText: "text-gray-600",
+            secondarySubtle: "text-gray-500",
+            tertiaryBg: "bg-blue-100",
+            dividerColor: "bg-blue-50", // Tonal divider
+            inputColor: "text-gray-600",
+            actionColor: "text-blue-700",
+            activeSegmentBg: "bg-white",
+            iconBgRed: "bg-red-100",
+            iconColorRed: "text-red-700",
+            iconBgGreen: "bg-green-100",
+            iconColorGreen: "text-green-700",
+            modalBg: "bg-white",
+            modalRounding: "rounded-t-[28px]",
+            modalShadow: "shadow-2xl",
+            modalOpenAnimation: "animate-slide-up-material",
+            modalCloseAnimation: "animate-slide-down-material",
+            backdropOpenAnimation: "animate-fade-in-backdrop-slow",
+            backdropCloseAnimation: "animate-fade-out-backdrop-slow"
+          },
+          dark: {
+            font: 'font-["Roboto",_"Noto_Sans",_sans-serif]',
+            pageBg: "bg-[#1a1c1e]",
+            cardBg: "bg-[#1e1e1e]",
+            cardRounding: "rounded-[28px]",
+            cardShadow: "shadow-xl shadow-black/30",
+            headerFont: "text-4xl font-medium",
+            settingsButton: "p-2 rounded-full hover:bg-gray-700",
+            iconStrokeWidth: 2.5,
+            primaryText: "text-gray-200",
+            secondaryText: "text-gray-400",
+            secondarySubtle: "text-gray-500",
+            tertiaryBg: "bg-gray-700",
+            dividerColor: "bg-gray-700",
+            inputColor: "text-gray-400",
+            actionColor: "text-blue-400",
+            activeSegmentBg: "bg-gray-900",
+            iconBgRed: "bg-red-900/50",
+            iconColorRed: "text-red-400",
+            iconBgGreen: "bg-green-900/50",
+            iconColorGreen: "text-green-400",
+            modalBg: "bg-gray-800",
+            modalRounding: "rounded-t-[28px]",
+            modalShadow: "shadow-2xl shadow-black/40",
+            modalOpenAnimation: "animate-slide-up-material",
+            modalCloseAnimation: "animate-slide-down-material",
+            backdropOpenAnimation: "animate-fade-in-backdrop-slow",
+            backdropCloseAnimation: "animate-fade-out-backdrop-slow"
+          }
+        }
+      };
+      return themes[design][isDarkMode ? 'dark' : 'light'];
+    };
+
+// --- Reusable Components ---
+
+    function SegmentedControl({ options, value, onChange, design, theme }) {
+      const activeIndex = useMemo(() => options.findIndex(o => o.value === value), [options, value]);
+      const itemWidth = 100 / options.length;
+
+      if (design === 'cupertino') {
+        const totalPadding = 4; // p-[2px] = 2px left + 2px right
+        return (
+          <div className={`relative flex w-full ${theme.tertiaryBg} rounded-lg p-[2px]`}>
+            <div
+              className={`absolute top-[2px] bottom-[2px] left-[2px] ${theme.activeSegmentBg} rounded-md shadow transition-all duration-300 ease-in-out`} // <-- ADDED left-[2px]
+              style={{
+                width: `calc(${itemWidth}% - ${totalPadding / options.length}px)`, // <-- CHANGED
+                transform: `translateX(calc(${activeIndex * 100}%))`, // <-- CHANGED
+              }}
+            />
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => onChange(option.value)}
+                className={`relative z-10 flex-1 py-2 rounded-md font-medium text-xs transition-colors duration-200 ${
+                  value === option.value ? theme.actionColor : theme.secondaryText
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        );
+      }
+
+      if (design === 'material') {
+        const totalPadding = 8; // p-1 = 4px left + 4px right
+        return (
+          <div className={`relative flex w-full ${theme.tertiaryBg} rounded-full p-1`}>
+            <div
+              className={`absolute top-1 bottom-1 left-1 ${theme.activeSegmentBg} rounded-full shadow-md transition-all duration-300 ease-in-out`} // <-- ADDED left-1
+              style={{
+                width: `calc(${itemWidth}% - ${totalPadding / options.length}px)`, // <-- CHANGED
+                transform: `translateX(${activeIndex * 100}%)`, // (This was already correct)
+              }}
+            />
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => onChange(option.value)}
+                className={`relative z-10 flex-1 py-2 font-medium text-xs transition-colors duration-200 rounded-full ${
+                  value === option.value ? theme.actionColor : theme.secondaryText
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        );
+      }
+      return null;
+    }
+
+    // New Divider component
+    function Divider({ design, theme }) {
+      if (design === 'cupertino') {
+        return (
+          <div className="w-full pl-4">
+            <div className={`h-px w-full ${theme.dividerColor}`}></div>
+          </div>
+        );
+      }
+      return <div className={`h-px w-full ${theme.dividerColor}`}></div>;
+    }
+
+    function SettingsModal({ isOpen, onClose, isMobile, theme, design, setDesign, mode, setMode }) {
+      const [isClosing, setIsClosing] = useState(false);
+      const animationDuration = design === 'material' ? 400 : 350;
+
+      const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+          onClose();
+          setIsClosing(false);
+        }, animationDuration);
+      };
+
+      if (!isOpen) return null;
+
+      const modalStyle = isMobile ?
+        `fixed bottom-0 left-0 right-0 w-full p-4 pt-6 ${theme.modalBg} ${theme.modalRounding} ${theme.modalShadow} ${isClosing ? theme.modalCloseAnimation : theme.modalOpenAnimation}` :
+        `absolute top-24 right-4 md:right-8 w-80 p-4 ${theme.cardBg} ${theme.modalRounding} ${theme.modalShadow} ${isClosing ? 'animate-fade-out-popover' : 'animate-fade-in-popover'}`;
+      
+      const backdropStyle = `fixed inset-0 bg-black/30 backdrop-blur-sm z-40 ${isClosing ? theme.backdropCloseAnimation : theme.backdropOpenAnimation}`;
+
+      const appearanceOptions = [ { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }, { value: 'system', label: 'System' } ];
+      const designOptions = [ { value: 'cupertino', label: 'Cupertino' }, { value: 'material', label: 'Material You' } ];
+
+      return (
+        <div>
+          <div className={backdropStyle} onClick={handleClose}></div>
+          <div className={`z-50 ${modalStyle}`}>
+            {isMobile && (
+              <div className={`w-10 h-1 ${theme.tertiaryBg} rounded-full absolute top-2.5 left-1/2 -translate-x-1/2`}></div>
+            )}
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className={`text-sm font-medium ${theme.primaryText} mb-2 block px-2`}>Appearance</label>
+                <SegmentedControl options={appearanceOptions} value={mode} onChange={setMode} design={design} theme={theme} />
+              </div>
+              <div>
+                <label className={`text-sm font-medium ${theme.primaryText} mb-2 block px-2`}>Design</label>
+                <SegmentedControl options={designOptions} value={design} onChange={setDesign} design={design} theme={theme} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    // --- Main Application Component ---
+    function AttendanceCalculator() {
+      // App State
+      const [inputMode, setInputMode] = useState('attendedMissed');
+      const [totalClasses, setTotalClasses] = useState('');
+      const [classesAttended, setClassesAttended] = useState('');
+      const [classesMissed, setClassesMissed] = useState('');
+      const [stats, setStats] = useState(null);
+      const [errorMessage, setErrorMessage] = useState(null);
+
+      // Theme State
+      const [design, setDesign] = useState('cupertino');
+      const [mode, setMode] = useState('system');
+      const [isDarkMode, setIsDarkMode] = useState(false);
+      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+      const [isMobile, setIsMobile] = useState(false);
+
+      // Theme Logic
+      useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+      }, []);
+
+      useEffect(() => {
+        if (mode === 'system') {
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          setIsDarkMode(mediaQuery.matches);
+          const handler = (e) => setIsDarkMode(e.matches);
+          mediaQuery.addEventListener('change', handler);
+          return () => mediaQuery.removeEventListener('change', handler);
+        } else {
+          setIsDarkMode(mode === 'dark');
+        }
+      }, [mode]);
+
+      const theme = getThemeClasses(design, isDarkMode);
+
+      // Sarcasm Messages
+      const sarcasticMessages = [ "Attended more classes than exist? Are you a time traveler?", "Missed more classes than the total? Impressive, in a weird way.", "Ah, negative classes. Did you *un-learn* something?", "Your math is... creative. Let's try real numbers.", ];
+      const getRandomSarcasticMessage = () => sarcasticMessages[Math.floor(Math.random() * sarcasticMessages.length)];
+      const floatMessages = [ "Oh, 0.5 of a class? Did the professor just... dissolve?", "Fractional classes? Is this quantum mechanics?", "I only speak in whole numbers. This .1, .2, .3 stuff is too advanced.", ];
+      const getRandomFloatMessage = () => floatMessages[Math.floor(Math.random() * floatMessages.length)];
+
+      // CALCULATION LOGIC
+      useEffect(() => {
+        setErrorMessage(null);
+        const inputs = [totalClasses, classesAttended, classesMissed];
+        if (inputs.some(val => val && val.includes('.'))) { setErrorMessage(getRandomFloatMessage()); setStats(null); return; }
+        let total = 0, attended = 0, missed = 0;
+        const in_total = parseInt(totalClasses);
+        const in_attended = parseInt(classesAttended);
+        const in_missed = parseInt(classesMissed);
+        try {
+          if (inputMode === 'totalAttended') {
+            if ((totalClasses && isNaN(in_total)) || (classesAttended && isNaN(in_attended))) { setErrorMessage(getRandomSarcasticMessage()); setStats(null); return; }
+            total = in_total || 0;
+            attended = in_attended || 0;
+            if (attended < 0 || total < 0) { setErrorMessage("Negative classes? Really?"); setStats(null); return; }
+            if (attended > total && total > 0) { setErrorMessage("Attended more classes than exist? Time traveler?"); setStats(null); return; }
+            missed = total - attended;
+            if (total > 0 && attended >= 0) setClassesMissed(String(missed));
+          } else if (inputMode === 'totalMissed') {
+            if ((totalClasses && isNaN(in_total)) || (classesMissed && isNaN(in_missed))) { setErrorMessage(getRandomSarcasticMessage()); setStats(null); return; }
+            total = in_total || 0;
+            missed = in_missed || 0;
+            if (missed < 0 || total < 0) { setErrorMessage("Negative classes? Really?"); setStats(null); return; }
+            if (missed > total && total > 0) { setErrorMessage("Missed more classes than the total? Impressive."); setStats(null); return; }
+            attended = total - missed;
+            if (total > 0 && missed >= 0) setClassesAttended(String(attended));
+          } else if (inputMode === 'attendedMissed') {
+            if ((classesAttended && isNaN(in_attended)) || (classesMissed && isNaN(in_missed))) { setErrorMessage(getRandomSarcasticMessage()); setStats(null); return; }
+            attended = in_attended || 0;
+            missed = in_missed || 0;
+            if (attended < 0 || missed < 0) { setErrorMessage("Negative classes? Really?"); setStats(null); return; }
+            total = attended + missed;
+            if (attended >= 0 && missed >= 0) setTotalClasses(String(total));
+          }
+        } catch (error) { setErrorMessage(getRandomSarcasticMessage()); setStats(null); return; }
+        if (total <= 0 || attended < 0 || missed < 0) { setStats(null); return; }
+        const currentPercentage = (attended / total) * 100;
+        let classesToAttend = 0;
+        if (currentPercentage < 75) { classesToAttend = Math.ceil((0.75 * total - attended) / 0.25); }
+        let canMiss = 0;
+        if (currentPercentage >= 75) { canMiss = Math.floor((attended - 0.75 * total) / 0.75); }
+        const futurePercentageAfter5 = ((attended + 5) / (total + 5)) * 100;
+        const futurePercentageAfter10 = ((attended + 10) / (total + 10)) * 100;
+        setStats({ total, attended, missed, currentPercentage: currentPercentage.toFixed(2), classesToAttend, canMiss: Math.max(0, canMiss), futurePercentageAfter5: futurePercentageAfter5.toFixed(2), futurePercentageAfter10: futurePercentageAfter10.toFixed(2), });
+      }, [totalClasses, classesAttended, classesMissed, inputMode]);
+      
+      const inputOptions = [ { value: 'totalAttended', label: 'Total & Attended' }, { value: 'totalMissed', label: 'Total & Missed' }, { value: 'attendedMissed', label: 'Attended & Missed' } ];
+      const getStatusColor = (percentage) => { if (percentage >= 75) return 'text-green-500'; if (percentage >= 65) return 'text-yellow-500'; return 'text-red-500'; };
+      const getStatusMessage = (percentage) => { if (percentage >= 85) return 'Excellent!'; if (percentage >= 75) return 'Safe Zone'; if (percentage < 75) return 'Action Needed'; return 'In Danger'; };
+
+      // --- RENDER ---
+      return (
+        <div className={`min-h-screen p-4 ${theme.pageBg} ${theme.font} transition-colors duration-300`}>
+          <style>{`
+            /* Card Fade-in */
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+            
+            /* Popover */
+            @keyframes popoverIn { from { opacity: 0; transform: scale(0.95) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+            .animate-fade-in-popover { animation: popoverIn 0.2s ease-out forwards; transform-origin: top right; }
+            @keyframes popoverOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95) translateY(-10px); } }
+            .animate-fade-out-popover { animation: popoverOut 0.2s ease-in forwards; transform-origin: top right; }
+            
+            /* Backdrop Animations */
+            @keyframes fadeInBackdropFast { from { opacity: 0; } to { opacity: 1; } }
+            .animate-fade-in-backdrop-fast { animation: fadeInBackdropFast 0.2s ease-out forwards; }
+            @keyframes fadeOutBackdropFast { from { opacity: 1; } to { opacity: 0; } }
+            .animate-fade-out-backdrop-fast { animation: fadeOutBackdropFast 0.3s ease-in forwards; }
+            
+            @keyframes fadeInBackdropSlow { from { opacity: 0; } to { opacity: 1; } }
+            .animate-fade-in-backdrop-slow { animation: fadeInBackdropSlow 0.3s ease-in-out forwards; }
+            @keyframes fadeOutBackdropSlow { from { opacity: 1; } to { opacity: 0; } }
+            .animate-fade-out-backdrop-slow { animation: fadeOutBackdropSlow 0.3s ease-in-out forwards; }
+            
+            /* Modal Slide Animations */
+            @keyframes slideUpCupertino { from { transform: translateY(100%); } to { transform: translateY(0); } }
+            .animate-slide-up-cupertino { animation: slideUpCupertino 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+            @keyframes slideDownCupertino { from { transform: translateY(0); } to { transform: translateY(100%); } }
+            .animate-slide-down-cupertino { animation: slideDownCupertino 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+            
+            @keyframes slideUpMaterial { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+            .animate-slide-up-material { animation: slideUpMaterial 0.4s cubic-bezier(0.2, 0, 0, 1) forwards; }
+            @keyframes slideDownMaterial { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
+            .animate-slide-down-material { animation: slideDownMaterial 0.3s cubic-bezier(0.2, 0, 0, 1) forwards; }
+            
+            /* Input spinners */
+            input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            input[type=number] { -moz-appearance: textfield; }
+          `}</style>
+          
+          <div className="max-w-md md:max-w-xl mx-auto space-y-4">
+            
+            <header className="px-4 pt-8 pb-4 flex justify-between items-center">
+              <h1 className={`${theme.headerFont} ${theme.primaryText} flex items-center gap-3`}>
+                <Calendar c={theme.actionColor} s={34} sw={theme.iconStrokeWidth} />
+                Attendance
+              </h1>
+              <button onClick={() => setIsSettingsOpen(true)} className={`${theme.settingsButton} ${theme.secondaryText}`}>
+                <Settings s={22} sw={theme.iconStrokeWidth} />
+              </button>
+            </header>
+
+            {/* Input Section */}
+            <div>
+              <h2 className={`text-xs font-semibold ${theme.secondaryText} uppercase px-6 pb-2`}>
+                Enter Details
+              </h2>
+              <div className={`${theme.cardBg} ${theme.cardRounding} ${theme.cardShadow} overflow-hidden`}>
+                <div className="p-4">
+                  <label className={`text-sm ${theme.primaryText} mb-2 block`}>Data I Have</label>
+                  <SegmentedControl options={inputOptions} value={inputMode} onChange={setInputMode} design={design} theme={theme} />
+                </div>
+                
+                <Divider design={design} theme={theme} />
+                
+                {inputMode === 'totalAttended' && (
+                  <>
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="total-classes" className={theme.primaryText}>Total Classes</label>
+                      <input id="total-classes" type="number" value={totalClasses} onChange={(e) => setTotalClasses(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 50" min="0" />
+                    </div>
+                    <Divider design={design} theme={theme} />
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="classes-attended" className={theme.primaryText}>Classes Attended</label>
+                      <input id="classes-attended" type="number" value={classesAttended} onChange={(e) => setClassesAttended(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 40" min="0" />
+                    </div>
+                  </>
+                )}
+                {inputMode === 'totalMissed' && (
+                  <>
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="total-classes" className={theme.primaryText}>Total Classes</label>
+                      <input id="total-classes" type="number" value={totalClasses} onChange={(e) => setTotalClasses(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 50" min="0" />
+                    </div>
+                    <Divider design={design} theme={theme} />
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="classes-missed" className={theme.primaryText}>Classes Missed</label>
+                      <input id="classes-missed" type="number" value={classesMissed} onChange={(e) => setClassesMissed(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 10" min="0" />
+                    </div>
+                  </>
+                )}
+                {inputMode === 'attendedMissed' && (
+                  <>
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="classes-attended" className={theme.primaryText}>Classes Attended</label>
+                      <input id="classes-attended" type="number" value={classesAttended} onChange={(e) => setClassesAttended(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 40" min="0" />
+                    </div>
+                    <Divider design={design} theme={theme} />
+                    <div className="flex items-center justify-between p-4">
+                      <label htmlFor="classes-missed" className={theme.primaryText}>Classes Missed</label>
+                      <input id="classes-missed" type="number" value={classesMissed} onChange={(e) => setClassesMissed(e.target.value)} className={`w-24 text-right ${theme.inputColor} bg-transparent border-none focus:ring-0 focus:outline-none p-0`} placeholder="e.g., 10" min="0" />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="text-center px-6 py-1 text-sm text-red-600 animate-fade-in -mt-2">
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Results Section */}
+            {stats && (
+              <div className="space-y-4 animate-fade-in">
+                <h2 className={`text-xs font-semibold ${theme.secondaryText} uppercase px-6 pb-2 pt-2`}>
+                  Results
+                </h2>
+                
+                <div className={`${theme.cardBg} ${theme.cardRounding} ${theme.cardShadow} overflow-hidden`}>
+                  <div className="p-4 flex items-center justify-between">
+                    <span className={`${theme.primaryText} font-medium`}>Current Status</span>
+                    <div className="text-right">
+                      <span className={`text-3xl font-bold ${getStatusColor(stats.currentPercentage)}`}>
+                        {stats.currentPercentage}%
+                      </span>
+                      <div className={`text-sm ${theme.secondaryText}`}>{getStatusMessage(stats.currentPercentage)}</div>
+                    </div>
+                  </div>
+
+                  <Divider design={design} theme={theme} />
+                  
+                  <div className="p-4">
+                    <div className={`relative w-full ${theme.tertiaryBg} rounded-full h-2.5`}>
+                      <div
+                        className="h-2.5 rounded-full transition-all duration-500"
+                        style={{
+                            width: `${stats.currentPercentage}%`,
+                            backgroundColor: stats.currentPercentage >= 75 ? '#22c55e' : (stats.currentPercentage >= 65 ? '#f59e0b' : '#ef4444'),
+                        }}
+                      />
+                      <div className="absolute top-[-4px] bottom-[-4px] w-0.5 bg-gray-400" style={{ left: '75%' }} title="75% Target" ></div>
+                    </div>
+                    <div className={`relative w-full text-xs ${theme.secondarySubtle} mt-1.5`}>
+                      <div className="absolute" style={{ left: '75%', transform: 'translateX(-50%)' }}>
+                        75%
+                      </div>
+                    </div>
+                  </div>
+
+                  <Divider design={design} theme={theme} />
+
+                  {stats.currentPercentage < 75 ? (
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center ${theme.iconBgRed} rounded-lg`}>
+                          <Target c={theme.iconColorRed} s={16} sw={theme.iconStrokeWidth} />
+                        </div>
+                        <div>
+                          <div className={theme.primaryText}>Classes to Attend</div>
+                          <div className={`text-xs ${theme.secondarySubtle}`}>To reach 75% goal</div>
+                        </div>
+                      </div>
+                      <span className="text-xl font-medium text-red-600">
+                        {stats.classesToAttend} {stats.classesToAttend === 1 ? 'class' : 'classes'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center ${theme.iconBgGreen} rounded-lg`}>
+                          <Sparkles c={theme.iconColorGreen} s={16} sw={theme.iconStrokeWidth} />
+                        </div>
+                        <div>
+                          <div className={theme.primaryText}>Safe to Miss</div>
+                          <div className={`text-xs ${theme.secondarySubtle}`}>To stay above 75%</div>
+                        </div>
+                      </div>
+                      <span className="text-xl font-medium text-green-600">
+                        {stats.canMiss} {stats.canMiss === 1 ? 'class' : 'classes'}
+                      </span>
+                    </div>
+                  )}
+
+                  <Divider design={design} theme={theme} />
+
+                  <div className="p-4 flex items-center justify-between">
+                    <span className={theme.primaryText}>Breakdown</span>
+                    <div className={`text-right text-sm ${theme.secondaryText}`}>
+                      <span className="font-medium text-green-600">{stats.attended}</span> Present / 
+                      <span className="font-medium text-red-600"> {stats.missed}</span> Absent / 
+                      <span className={`font-medium ${theme.primaryText}`}> {stats.total}</span> Total
+                    </div>
+                  </div>
+                </div>
+                
+                <div className={`${theme.cardBg} ${theme.cardRounding} ${theme.cardShadow} overflow-hidden`}>
+                  <h3 className={`${theme.primaryText} font-medium p-4`}>
+                    Projections
+                  </h3>
+                  <Divider design={design} theme={theme} />
+                  <div className="flex items-center justify-between p-4">
+                    <div className={theme.primaryText}>After 5 more classes</div>
+                    <div className={`${theme.secondaryText} font-medium`}>{stats.futurePercentageAfter5}%</div>
+                  </div>
+                  <Divider design={design} theme={theme} />
+                  <div className="flex items-center justify-between p-4">
+                    <div className={theme.primaryText}>After 10 more classes</div>
+                    <div className={`${theme.secondaryText} font-medium`}>{stats.futurePercentageAfter10}%</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!stats && !errorMessage && (
+              <div className={`text-center py-20 ${theme.secondarySubtle}`}>
+                <ClipboardList c="text-gray-400 mx-auto" s={64} sw={theme.iconStrokeWidth} />
+                <p className="mt-4 text-lg">Enter your details</p>
+                <p className="text-sm">Your stats will appear here</p>
+              </div>
+            )}
+          </div>
+          
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            isMobile={isMobile}
+            theme={theme}
+            design={design}
+            setDesign={setDesign}
+            mode={mode}
+            setMode={setMode}
+          />
+        </div>
+      );
+    }
+
+    ReactDOM.render(<AttendanceCalculator />, document.getElementById('root'));
+  </script>
+
+</body>
+</html>

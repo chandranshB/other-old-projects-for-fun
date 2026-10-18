@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Number Intelligence & Lookup - Web & Python Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- libphonenumber-js bundle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.10.49/libphonenumber-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --bg-color: #0b0f19;
+            --card-bg: rgba(21, 28, 44, 0.75);
+            --border-color: rgba(255, 255, 255, 0.12);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #064e3b 0%, #0b0f19 75%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px 16px 50px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-bar {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-back:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(-2px);
+        }
+
+        .title-block {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: clamp(26px, 5vw, 38px);
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            background: linear-gradient(135deg, #34d399, #10b981, #6ee7b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Mode Selector */
+        .mode-tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            gap: 6px;
+        }
+
+        .mode-tab {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-tab.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Container Card */
+        .studio-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Input Bar */
+        .search-box-wrap {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .phone-input {
+            width: 100%;
+            padding: 16px 20px;
+            padding-right: 120px;
+            background: #0f172a;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            color: #fff;
+            font-size: 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .phone-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+
+        .validate-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            bottom: 8px;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 0 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .validate-btn:hover {
+            background: #34d399;
+        }
+
+        /* Preset pills */
+        .sample-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .sample-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .pill-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: #cbd5e1;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #34d399;
+            color: #fff;
+        }
+
+        /* Results Display */
+        .results-panel {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: none;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .country-title {
+            font-size: 22px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .validity-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .valid-true {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .valid-false {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            color: #fff;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        /* Python Code Viewer */
+        #python-view {
+            display: none;
+        }
+
+        .code-container {
+            background: #0a0e17;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            overflow-x: auto;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .action-pill {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-pill:hover {
+            background: #34d399;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="../../index.html" class="nav-back">
+            <span>◀</span> Hub Portfolio
+        </a>
+        <div style="font-size: 13px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+            OTHER-OLD-PROJECTS-FOR-FUN #04
+        </div>
+    </div>
+
+    <div class="title-block">
+        <h1>Phone Number Intelligence</h1>
+        <p style="color: var(--text-muted); font-size: 15px; margin: 0;">Validate numbers, detect countries, carriers, timezones, and inspect metadata.</p>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-web">
+            <span>🔍</span> Live Intelligence Lookup
+        </button>
+        <button class="mode-tab" id="tab-py">
+            <span>🐍</span> Python Source (phonenumbers)
+        </button>
+    </div>
+
+    <!-- Main Card -->
+    <div class="studio-card">
+        <!-- 1. Web Lookup View -->
+        <div id="web-tool-view">
+            <div class="search-box-wrap">
+                <input type="text" id="phone-input" class="phone-input" placeholder="+1 650 253 0000" value="+91 9876543210">
+                <button class="validate-btn" id="analyze-btn">Analyze</button>
+            </div>
+
+            <!-- Quick Samples -->
+            <div class="sample-pills">
+                <span class="sample-label">Try Examples:</span>
+                <button class="pill-btn" data-number="+91 98765 43210">🇮🇳 India</button>
+                <button class="pill-btn" data-number="+1 650 253 0000">🇺🇸 Google HQ (US)</button>
+                <button class="pill-btn" data-number="+44 20 7946 0991">🇬🇧 London (UK)</button>
+                <button class="pill-btn" data-number="+81 3 1234 5678">🇯🇵 Tokyo (Japan)</button>
+                <button class="pill-btn" data-number="+49 30 123456">🇩🇪 Berlin (Germany)</button>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-panel" id="results-panel">
+                <div class="result-header">
+                    <div class="country-title">
+                        <span id="country-flag" style="font-size: 32px;">🌐</span>
+                        <div>
+                            <span id="country-name">Country</span>
+                            <div id="country-code-display" style="font-size: 13px; color: var(--text-muted); font-weight: normal;"></div>
+                        </div>
+                    </div>
+                    <div id="validity-badge" class="validity-badge valid-true">VALID NUMBER</div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">International Format</div>
+                        <div class="info-value" id="val-international">-</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">National Format</div>
+                        <div class="info-value" id="val-national">-</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">E.164 Format</div>
+                        <div class="info-value" id="val-e164" style="color: #34d399;">-</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Line / Number Type</div>
+                        <div class="info-value" id="val-type">-</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Country Calling Code</div>
+                        <div class="info-value" id="val-calling-code">-</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Estimated Timezone</div>
+                        <div class="info-value" id="val-timezone">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Python Source View -->
+        <div id="python-view">
+            <div class="code-container">
+                <div class="code-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: var(--primary); color: #000; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px;">PYTHON 3</span>
+                        <span style="font-weight: 700; color: #fff;">Phone number info.py</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="action-pill" id="copy-py-btn">📋 Copy Code</button>
+                        <a href="../../original-source/other-old-projects-for-fun/Phone number info.py" download="Phone number info.py" class="action-pill">⬇ Download .py</a>
+                    </div>
+                </div>
+                <pre><code id="py-code-block">import phonenumbers
+from phonenumbers import carrier, geocoder, timezone
+
+mobileNo = input("Enter Phone number with country code (+xx xxxxxxxxx): ")
+mobileNo = phonenumbers.parse(mobileNo)
+
+if phonenumbers.is_valid_number(mobileNo):
+    print('Phone Number belongs to region :', timezone.time_zones_for_number(mobileNo))
+    print('Service Provider : ', carrier.name_for_number(mobileNo, "en"))
+    print('Phone number belongs to country : ', geocoder.description_for_number(mobileNo, "en"))
+else:
+    print("Please enter valid mobile number")</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        const tabWeb = document.getElementById('tab-web');
+        const tabPy = document.getElementById('tab-py');
+        const webView = document.getElementById('web-tool-view');
+        const pyView = document.getElementById('python-view');
+
+        tabWeb.addEventListener('click', () => {
+            tabWeb.classList.add('active');
+            tabPy.classList.remove('active');
+            webView.style.display = 'block';
+            pyView.style.display = 'none';
+        });
+
+        tabPy.addEventListener('click', () => {
+            tabPy.classList.add('active');
+            tabWeb.classList.remove('active');
+            webView.style.display = 'none';
+            pyView.style.display = 'block';
+        });
+
+        // Copy Python code
+        document.getElementById('copy-py-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(document.getElementById('py-code-block').innerText).then(() => {
+                alert('Python script copied to clipboard!');
+            });
+        });
+
+        // Country code to Flag emoji helper
+        function getCountryFlag(countryCode) {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            const codePoints = countryCode
+                .toUpperCase()
+                .split('')
+                .map(char => 127397 + char.charCodeAt(0));
+            return String.fromCodePoint(...codePoints);
+        }
+
+        // Country names dictionary
+        const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+
+        // Timezone estimation map
+        const countryTimezones = {
+            'IN': 'Asia/Kolkata (UTC+05:30)',
+            'US': 'US Eastern to Pacific (UTC-05:00 to UTC-08:00)',
+            'GB': 'Europe/London (UTC+00:00 / BST)',
+            'JP': 'Asia/Tokyo (UTC+09:00)',
+            'DE': 'Europe/Berlin (UTC+01:00 / CEST)',
+            'FR': 'Europe/Paris (UTC+01:00 / CEST)',
+            'AU': 'Australia (UTC+08:00 to UTC+10:30)',
+            'BR': 'America/Sao_Paulo (UTC-03:00)',
+            'CA': 'Canada (UTC-03:30 to UTC-08:00)',
+            'CN': 'Asia/Shanghai (UTC+08:00)'
+        };
+
+        const phoneInput = document.getElementById('phone-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsPanel = document.getElementById('results-panel');
+
+        function analyzePhone() {
+            const rawVal = phoneInput.value.trim();
+            if (!rawVal) return;
+
+            try {
+                // Ensure starts with + if missing
+                const parseString = rawVal.startsWith('+') ? rawVal : `+${rawVal}`;
+                const parsed = libphonenumber.parsePhoneNumberFromString(parseString);
+
+                resultsPanel.style.display = 'block';
+
+                if (parsed && parsed.isValid()) {
+                    const country = parsed.country || 'Unknown';
+                    const countryFullName = country !== 'Unknown' ? regionNames.of(country) : 'International';
+
+                    document.getElementById('country-flag').textContent = getCountryFlag(country);
+                    document.getElementById('country-name').textContent = countryFullName;
+                    document.getElementById('country-code-display').textContent = `ISO Alpha-2: ${country}`;
+
+                    const badge = document.getElementById('validity-badge');
+                    badge.className = 'validity-badge valid-true';
+                    badge.textContent = '✓ VALID PHONE NUMBER';
+
+                    document.getElementById('val-international').textContent = parsed.formatInternational();
+                    document.getElementById('val-national').textContent = parsed.formatNational();
+                    document.getElementById('val-e164').textContent = parsed.format('E.164');
+                    document.getElementById('val-type').textContent = parsed.getType() || 'Mobile / Standard';
+                    document.getElementById('val-calling-code').textContent = `+${parsed.countryCallingCode}`;
+                    document.getElementById('val-timezone').textContent = countryTimezones[country] || `Regional (${country})`;
+                } else if (parsed && parsed.isPossible()) {
+                    const country = parsed.country || 'Unknown';
+                    const countryFullName = country !== 'Unknown' ? regionNames.of(country) : 'International';
+
+                    document.getElementById('country-flag').textContent = getCountryFlag(country);
+                    document.getElementById('country-name').textContent = countryFullName;
+                    document.getElementById('country-code-display').textContent = `Possible length for ${country}`;
+
+                    const badge = document.getElementById('validity-badge');
+                    badge.className = 'validity-badge valid-true';
+                    badge.style.color = '#f59e0b';
+                    badge.textContent = '⚠ POSSIBLE NUMBER';
+
+                    document.getElementById('val-international').textContent = parsed.formatInternational();
+                    document.getElementById('val-national').textContent = parsed.formatNational();
+                    document.getElementById('val-e164').textContent = parsed.format('E.164');
+                    document.getElementById('val-type').textContent = 'Possible format';
+                    document.getElementById('val-calling-code').textContent = `+${parsed.countryCallingCode}`;
+                    document.getElementById('val-timezone').textContent = countryTimezones[country] || 'Unknown';
+                } else {
+                    document.getElementById('country-flag').textContent = '⚠️';
+                    document.getElementById('country-name').textContent = 'Invalid Phone Number';
+                    document.getElementById('country-code-display').textContent = 'Please check country code and digit count';
+
+                    const badge = document.getElementById('validity-badge');
+                    badge.className = 'validity-badge valid-false';
+                    badge.textContent = '✕ INVALID NUMBER';
+
+                    document.getElementById('val-international').textContent = rawVal;
+                    document.getElementById('val-national').textContent = '-';
+                    document.getElementById('val-e164').textContent = '-';
+                    document.getElementById('val-type').textContent = 'Unrecognized';
+                    document.getElementById('val-calling-code').textContent = '-';
+                    document.getElementById('val-timezone').textContent = '-';
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Parsing error: Please include international +country code (e.g. +91 9876543210)');
+            }
+        }
+
+        analyzeBtn.addEventListener('click', analyzePhone);
+        phoneInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') analyzePhone();
+        });
+
+        // Sample Pills Click
+        document.querySelectorAll('.pill-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                phoneInput.value = btn.dataset.number;
+                analyzePhone();
+            });
+        });
+
+        // Run analysis on load for default sample
+        analyzePhone();
+    </script>
+</body>
+</html>

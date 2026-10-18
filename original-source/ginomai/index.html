@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Calendar = ({ className = '', size = 24, strokeWidth = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-calendar ${className}`}>
+        <rect width="18" height="18" x="3" y="4" rx="2" ry="2" /> <line x1="16" x2="16" y1="2" y2="6" /> <line x1="8" x2="8" y1="2" y2="6" /> <line x1="3" x2="21" y1="10" y2="10" />
+      </svg>
+    );
+    const Target = ({ className = '', size = 24, strokeWidth = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-target ${className}`}>
+        <circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="6" /> <circle cx="12" cy="12" r="2" />
+      </svg>
+    );
+    const Sparkles = ({ className = '', size = 24, strokeWidth = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-sparkles ${className}`}>
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /> <path d="M5 3v4" /> <path d="M19 17v4" /> <path d="M3 5h4" /> <path d="M17 19h4" />
+      </svg>
+    );
+    const ClipboardList = ({ className = '', size = 24, strokeWidth = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-clipboard-list ${className}`}>
+        <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" />
+      </svg>
+    );
+
+    // Main component for the Attendance Calculator
+    function AttendanceCalculator() {
+      // --- STATE HOOKS ---
+      const [inputMode, setInputMode] = useState('attendedMissed'); // 'totalAttended', 'totalMissed', 'attendedMissed'
+      
+      // State for all possible inputs
+      const [totalClasses, setTotalClasses] = useState('');
+      const [classesAttended, setClassesAttended] = useState('');
+      const [classesMissed, setClassesMissed] = useState('');
+
+      // Universal stats state
+      const [stats, setStats] = useState(null);
+      // *** NEW ***: State for our sassy error messages
+      const [errorMessage, setErrorMessage] = useState(null);
+
+      const sarcasticMessages = [
+        "Attended more classes than exist? Are you a time traveler?",
+        "Missed more classes than the total? Impressive, in a weird way.",
+        "Ah, negative classes. Did you *un-learn* something?",
+        "Your math is... creative. Let's try real numbers.",
+        "Going for the world record in 'classes missed'?",
+        "Did a cat walk on your keyboard? Try again.",
+        "I'm just a calculator, not a magician. I can't make sense of this.",
+        "Please enter *numbers*. You know, 1, 2, 3...",
+      ];
+    
+      const getRandomSarcasticMessage = () => sarcasticMessages[Math.floor(Math.random() * sarcasticMessages.length)];
+
+      // --- CALCULATION LOGIC ---
+      useEffect(() => {
+        setErrorMessage(null);
+        
+        let total = 0;
+        let attended = 0;
+        let missed = 0;
+        
+        // Use raw parsed values to check for invalid text (NaN)
+        const in_total = parseInt(totalClasses);
+        const in_attended = parseInt(classesAttended);
+        const in_missed = parseInt(classesMissed);
+        
+        try {
+          if (inputMode === 'totalAttended') {
+            // Check for invalid text input (e.g., "abc")
+            if ((totalClasses && isNaN(in_total)) || (classesAttended && isNaN(in_attended))) {
+              setErrorMessage(getRandomSarcasticMessage()); setStats(null); return;
+            }
+            total = in_total || 0;
+            attended = in_attended || 0;
+
+            if (attended < 0 || total < 0) { // Validation
+              setErrorMessage("Negative classes? Really?"); setStats(null); return;
+            }
+            if (attended > total && total > 0) {
+               setErrorMessage("Attended more classes than exist? Time traveler?"); // Sarcasm!
+               setStats(null); return; 
+            }
+            missed = total - attended;
+            if (total > 0 && attended >= 0) {
+              setClassesMissed(String(missed));
+            }
+          } else if (inputMode === 'totalMissed') {
+            // Check for invalid text input
+            if ((totalClasses && isNaN(in_total)) || (classesMissed && isNaN(in_missed))) {
+              setErrorMessage(getRandomSarcasticMessage()); setStats(null); return;
+            }
+            total = in_total || 0;
+            missed = in_missed || 0;
+            
+            if (missed < 0 || total < 0) {
+              setErrorMessage("Negative classes? Really?"); setStats(null); return;
+            }
+            if (missed > total && total > 0) {
+              setErrorMessage("Missed more classes than the total? Impressive."); // More Sarcasm!
+              setStats(null); return;
+            }
+            attended = total - missed;
+            if (total > 0 && missed >= 0) {
+              setClassesAttended(String(attended));
+            }
+          } else if (inputMode === 'attendedMissed') {
+            if ((classesAttended && isNaN(in_attended)) || (classesMissed && isNaN(in_missed))) {
+              setErrorMessage(getRandomSarcasticMessage()); setStats(null); return;
+            }
+            attended = in_attended || 0;
+            missed = in_missed || 0;
+
+            if (attended < 0 || missed < 0) { // Validation
+              setErrorMessage("Negative classes? Really?"); setStats(null); return;
+            }
+
+            total = attended + missed;
+            if (attended >= 0 && missed >= 0) {
+              setTotalClasses(String(total));
+            }
+          }
+        } catch (error) {
+          console.warn(error.message);
+          setErrorMessage(getRandomSarcasticMessage()); // Catch-all sarcasm hehehahahahaha
+          setStats(null);
+          return;
+        }
+
+        if (total <= 0 || attended < 0 || missed < 0) {
+          setStats(null);
+          return;
+        }
+        
+        const currentPercentage = total > 0 ? (attended / total) * 100 : 0;
+
+        let classesToAttend = 0;
+        if (currentPercentage < 75) {
+          classesToAttend = Math.ceil((0.75 * total - attended) / 0.25);
+        }
+
+        let canMiss = 0;
+        if (currentPercentage >= 75) {
+          canMiss = Math.floor((attended - 0.75 * total) / 0.75);
+        }
+
+        const futurePercentageAfter5 = ((attended + 5) / (total + 5)) * 100;
+        const futurePercentageAfter10 = ((attended + 10) / (total + 10)) * 100;
+
+        setStats({
+          total,
+          attended,
+          missed,
+          currentPercentage: currentPercentage.toFixed(2),
+          classesToAttend,
+          canMiss: Math.max(0, canMiss),
+          futurePercentageAfter5: futurePercentageAfter5.toFixed(2),
+          futurePercentageAfter10: futurePercentageAfter10.toFixed(2),
+        });
+      }, [totalClasses, classesAttended, classesMissed, inputMode]);
+      
+      // --- HELPER FUNCTIONS FOR STYLING ---
+      // (Unchanged)
+      const getStatusColor = (percentage) => {
+        if (percentage >= 75) return 'text-green-500';
+        if (percentage >= 65) return 'text-yellow-500';
+        return 'text-red-500';
+      };
+
+      const getStatusMessage = (percentage) => {
+        if (percentage >= 85) return 'Excellent!';
+        if (percentage >= 75) return 'Safe Zone';
+        if (percentage < 75) return 'Action Needed';
+        return 'In Danger';
+      };
+
+      // --- RENDER METHOD ---
+      return (
+        <div 
+          className="min-h-screen bg-[#f2f2f7] p-4"
+          style={{ 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"' 
+          }}
+        >
+
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            input[type=number] { -moz-appearance: textfield; }
+          `}</style>
+          
+          <div className="max-w-md md:max-w-xl mx-auto space-y-4">
+            
+            <header className="px-4 pt-8 pb-4">
+              <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
+                <Calendar className="text-blue-500" size={34} strokeWidth={2.5} />
+                Attendance
+              </h1>
+            </header>
+
+            <div>
+              <h2 className="text-xs font-semibold text-gray-600 uppercase px-6 pb-2">
+                Enter Details
+              </h2>
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="divide-y divide-gray-200">
+                  
+                  <div className="p-4">
+                    <label className="text-sm text-gray-700 mb-2 block">Data I Have</label>
+                    <div className="relative flex w-full bg-gray-200/70 rounded-lg p-[2px]">
+                      <div
+                        className="absolute top-[2px] bottom-[2px] bg-white rounded-md shadow transition-all duration-300 ease-in-out"
+                        style={{
+                          width: 'calc(33.333% - 2px)',
+                          left: inputMode === 'totalAttended' ? '2px' : (inputMode === 'totalMissed' ? 'calc(33.333% + 1px)' : 'calc(66.666% + 1px)'),
+                        }}
+                      />
+                      <button
+                        onClick={() => setInputMode('totalAttended')}
+                        className={`relative z-10 flex-1 py-2 rounded-md font-medium text-xs transition-colors duration-200 ${
+                          inputMode === 'totalAttended' ? 'text-blue-600' : 'text-gray-600'
+                        }`}
+                      >
+                        Total & Attended
+                      </button>
+                      <button
+                        onClick={() => setInputMode('totalMissed')}
+                        className={`relative z-10 flex-1 py-2 rounded-md font-medium text-xs transition-colors duration-200 ${
+                          inputMode === 'totalMissed' ? 'text-blue-600' : 'text-gray-600'
+                        }`}
+                      >
+                        Total & Missed
+                      </button>
+                      <button
+                        onClick={() => setInputMode('attendedMissed')}
+                        className={`relative z-10 flex-1 py-2 rounded-md font-medium text-xs transition-colors duration-200 ${
+                          inputMode === 'attendedMissed' ? 'text-blue-600' : 'text-gray-600'
+                        }`}
+                      >
+                        Attended & Missed
+                      </button>
+                    </div>
+                  </div>
+
+                  
+                  {inputMode === 'totalAttended' && (
+                    <>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="total-classes" className="text-gray-900">Total Classes</label>
+                        <input
+                          id="total-classes"
+                          type="number"
+                          value={totalClasses}
+                          onChange={(e) => setTotalClasses(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 50"
+                          min="0"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="classes-attended" className="text-gray-900">Classes Attended</label>
+                        <input
+                          id="classes-attended"
+                          type="number"
+                          value={classesAttended}
+                          onChange={(e) => setClassesAttended(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 40"
+                          min="0"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {inputMode === 'totalMissed' && (
+                    <>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="total-classes" className="text-gray-900">Total Classes</label>
+                        <input
+                          id="total-classes"
+                          type="number"
+                          value={totalClasses}
+                          onChange={(e) => setTotalClasses(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 50"
+                          min="0"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="classes-missed" className="text-gray-900">Classes Missed</label>
+                        <input
+                          id="classes-missed"
+                          type="number"
+                          value={classesMissed}
+                          onChange={(e) => setClassesMissed(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 10"
+                          min="0"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {inputMode === 'attendedMissed' && (
+                    <>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="classes-attended" className="text-gray-900">Classes Attended</label>
+                        <input
+                          id="classes-attended"
+                          type="number"
+                          value={classesAttended}
+                          onChange={(e) => setClassesAttended(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 40"
+                          min="0"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-4">
+                        <label htmlFor="classes-missed" className="text-gray-900">Classes Missed</label>
+                        <input
+                          id="classes-missed"
+                          type="number"
+                          value={classesMissed}
+                          onChange={(e) => setClassesMissed(e.target.value)}
+                          className="w-24 text-right text-gray-500 bg-transparent border-none focus:ring-0 focus:outline-none p-0"
+                          placeholder="e.g., 10"
+                          min="0"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {errorMessage && (
+              <div className="text-center px-6 py-1 text-sm text-red-600 animate-fade-in -mt-2">
+                {errorMessage}
+              </div>
+            )}
+
+            {stats && (
+              <div className="space-y-4 animate-fade-in">
+                <h2 className="text-xs font-semibold text-gray-600 uppercase px-6 pb-2 pt-2">
+                  Results
+                </h2>
+                
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  <div className="divide-y divide-gray-200">
+
+                    <div className="p-4 flex items-center justify-between">
+                      <span className="text-gray-900 font-medium">Current Status</span>
+                      <div className="text-right">
+                        <span className={`text-3xl font-bold ${getStatusColor(stats.currentPercentage)}`}>
+                          {stats.currentPercentage}%
+                        </span>
+                        <div className="text-sm text-gray-600">{getStatusMessage(stats.currentPercentage)}</div>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <div className="relative w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="h-2.5 rounded-full transition-all duration-500"
+                          style={{
+                              width: `${stats.currentPercentage}%`,
+                              backgroundColor: stats.currentPercentage >= 75 ? '#22c55e' : (stats.currentPercentage >= 65 ? '#f59e0b' : '#ef4444'),
+                          }}
+                        />
+                        <div
+                          className="absolute top-[-4px] bottom-[-4px] w-0.5 bg-gray-400"
+                          style={{ left: '75%' }}
+                          title="75% Target"
+                        ></div>
+                      </div>
+                      <div className="relative w-full text-xs text-gray-500 mt-1.5">
+                        <div className="absolute" style={{ left: '75%', transform: 'translateX(-50%)' }}>
+                          75%
+                        </div>
+                      </div>
+                    </div>
+
+                    {stats.currentPercentage < 75 ? (
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-red-100 rounded-lg">
+                            <Target className="w-4 h-4 text-red-600" />
+                          </div>
+                          <div>
+                            <div className="text-gray-900">Classes to Attend</div>
+                            <div className="text-xs text-gray-500">To reach 75% goal</div>
+                          </div>
+                        </div>
+                        <span className="text-xl font-medium text-red-600">
+                          {stats.classesToAttend} {stats.classesToAttend === 1 ? 'class' : 'classes'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-green-100 rounded-lg">
+                            <Sparkles className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="text-gray-900">Safe to Miss</div>
+                            <div className="text-xs text-gray-500">To stay above 75%</div>
+                          </div>
+                        </div>
+                        <span className="text-xl font-medium text-green-600">
+                          {stats.canMiss} {stats.canMiss === 1 ? 'class' : 'classes'}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="p-4 flex items-center justify-between">
+                      <span className="text-gray-900">Breakdown</span>
+                      <div className="text-right text-sm text-gray-600">
+                        <span className="font-medium text-green-600">{stats.attended}</span> Present / 
+                        <span className="font-medium text-red-600"> {stats.missed}</span> Absent / 
+                        <span className="font-medium text-gray-800"> {stats.total}</span> Total
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  <h3 className="text-gray-900 font-medium p-4 pb-2">
+                    Projections
+                  </h3>
+                  <div className="divide-y divide-gray-200">
+                    <div className="flex items-center justify-between p-4">
+                      <div className="text-gray-900">After 5 more classes</div>
+                      <div className="text-gray-500 font-medium">{stats.futurePercentageAfter5}%</div>
+                    </div>
+                    <div className="flex items-center justify-between p-4">
+                      <div className="text-gray-900">After 10 more classes</div>
+                      <div className="text-gray-500 font-medium">{stats.futurePercentageAfter10}%</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* --- *** MODIFIED *** Empty State --- */}
+            {/* Now it only shows if there are NO stats AND NO error message */}
+            {!stats && !errorMessage && (
+              <div className="text-center py-20 text-gray-500">
+                <ClipboardList className="w-16 h-16 mx-auto text-gray-400" />
+                <p className="mt-4 text-lg">Enter your details</p>
+                <p className="text-sm">Your stats will appear here</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // --- This is the line that renders the app ---
+    ReactDOM.render(<AttendanceCalculator />, document.getElementById('root'));
+
+  </script>
+
+</body>
+</html>
